@@ -8,11 +8,11 @@ import langid
 
 from hs_internet_etl.utils.mysql_utils import MySqlHelper
 
-sql_help = MySqlHelper()
-
 
 class InternetJson(object):
     def __init__(self):
+        self.sql_help = MySqlHelper()
+
         # 初始化Mysql数据字典
         self.fieldRuleLists = []
         self.ruleItemDict = {}
@@ -86,9 +86,9 @@ class InternetJson(object):
         excavateDataFileList = news_dict.get('excavateDataFileList')
         if excavateDataFileList:
             for fileDict in excavateDataFileList:
-                if fileDict['fileName'].split('.')[1] == 'pdf':
+                if fileDict['fileName'].split('.')[-1] == 'pdf':
                     self.__fileLists.append(fileDict['fileName'])
-                elif fileDict['fileName'].split('.')[1] == 'jpg':
+                elif fileDict['fileName'].split('.')[-1] == 'jpg':
                     self.__img = fileDict.get('fileName')
         if self.__img:
             self.savePicOrFile(file_name, '/data/images', 'lib_pic_jor')
@@ -191,24 +191,16 @@ class InternetJson(object):
                 获取来源类型字典
         """
         sourceTypeSql = 'select sourceName,sourceCode from hs_source '
-        results = sql_help.execute_sql(sourceTypeSql)
+        results = self.sql_help.execute_sql(sourceTypeSql)
         for row in results:
             self.sourceDict[row[0]] = str(row[1])
-
-    def get_solr_value_tuple(self, *kw):
-        u"""
-                索引值
-        """
-        jour_value_tuple = kw[0]
-        contentTuple = (self.__contentShow.decode('utf-8', 'ignore'), self.__attributeJson)
-        return contentTuple + jour_value_tuple
 
     def getNumByLanguageCodeDict(self):
         u"""
                 获取语种编号字典code：number
         """
         languageSql = 'select number,code,language from hs_languages '
-        results = sql_help.execute_sql(languageSql)
+        results = self.sql_help.execute_sql(languageSql)
         for row in results:
             self.numByLanguageCodeDict[row[1]] = str(row[0])
             for lan in row[2].split('、'):
@@ -216,7 +208,7 @@ class InternetJson(object):
 
     def getFieldRule(self):
         fieldRuleSql = "SELECT a.fieldId,GROUP_CONCAT(a.itemId,':',a.contentRelation,':',a.content separator '&')             from hs_field_rule a             LEFT JOIN hs_field b             on a.fieldId = b.fieldId             where a.isDelete = '0' and b.isDelete = '0'             group by a.fieldRelId             ORDER BY b.bk1"
-        results = sql_help.execute_sql(fieldRuleSql)
+        results = self.sql_help.execute_sql(fieldRuleSql)
         if len(results) != 0:
             for fieldRule in list(results):
                 fieldRuleDict = {}
@@ -239,7 +231,7 @@ class InternetJson(object):
     def getRuleItemDict(self):
 
         ruleItemSql = 'SELECT id,spiderName from hs_field_rule_item '
-        results = sql_help.execute_sql(ruleItemSql)
+        results = self.sql_help.execute_sql(ruleItemSql)
         for row in results:
             self.ruleItemDict[row[0]] = str(row[1])
 
@@ -294,7 +286,7 @@ class InternetJson(object):
 
     def getDictOfMediaSection(self):
         mediaSectionSql = "select mediaSectionId,mediaId,languageNum,tags,countryNum,regionNum,mediaSectionName from hs_media_section where isDelete = '0'"
-        results = sql_help.execute_sql(mediaSectionSql)
+        results = self.sql_help.execute_sql(mediaSectionSql)
         for row in results:
             self.mediaByMediaSectionDict[row[0]] = row[1]
             self.languageNumByMediaSectionDict[row[0]] = row[2]
@@ -311,7 +303,7 @@ class InternetJson(object):
                 获取国家码
         """
         mediaSectionSql = "select countryNum,languageNum from hs_media_section where mediaSectionName = '" + siteCofName + "'"
-        execute_sql = sql_help.execute_sql(mediaSectionSql)
+        execute_sql = self.sql_help.execute_sql(mediaSectionSql)
         for row in execute_sql:
             return row[0], row[1]
 
@@ -330,8 +322,11 @@ class InternetJson(object):
             imgName = self.uuid + '.jpg'
             webPath = os.path.join(('/').join(fileName.split('/')[:-1]), self.__img).replace('\\', '/')
             absolutePath = os.path.join(lastPath, imgName).replace('\\', '/')
-            shutil.copyfile(webPath, absolutePath)
-            self.__localImgPath = os.path.join('/temp', str_time[:4], str_time, sTypePath, imgName).replace('\\', '/')
+            try:
+                shutil.copyfile(webPath, absolutePath)
+                self.__localImgPath = os.path.join('/temp', str_time[:4], str_time, sTypePath, imgName).replace('\\','/')
+            except FileNotFoundError as e:
+                self.__localImgPath = None
         if self.__fileLists:
             attrLists = []
             for pdfFile in self.__fileLists:

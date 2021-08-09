@@ -67,6 +67,7 @@ class ParseInternet:
                     print(f'Already parse: {file_name}')
                     continue
                 unzip_file(settings.ZIP_PATH + ('\\' if system == 'Windows' else '/') + file_name, settings.UNZIP_PATH)
+                print(f'成功解压文件:{file_name}')
             except:
                 print('unzip error')
                 continue
@@ -79,6 +80,8 @@ class ParseInternet:
                                 news_dict = json.loads(f.read(), strict=False)
                             except:
                                 print(f'Not JSON :(   Damn!!!  文件路径:{fileNamePath}')
+                                # 删除一个已解压的文件目录
+                                shutil.rmtree(root, True)
                                 continue
                         internet_json.parse_json(fileNamePath, news_dict)
                         # 根据条件过滤新闻
